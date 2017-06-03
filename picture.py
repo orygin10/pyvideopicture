@@ -1,5 +1,9 @@
-from urllib.request import urlopen
-from urllib.error import HTTPError
+ # -*- encoding: utf8 -*-
+try:
+    from urllib.request import urlopen
+    from urllib.error import HTTPError
+except ImportError:
+    from urllib2 import urlopen, HTTPError
 from bs4 import BeautifulSoup
 import re
 import os
@@ -76,7 +80,7 @@ def parse_input():
     Returns:
         A list of (str) video ids
     """
-    urls_input = input("Entrer le lien d'une chaine youtube ou des liens youtube séparés par une virgule (,) : \n").split(',')
+    urls_input = input("Entrer le lien d'une chaine youtube ou des liens youtube separes par une virgule (,) : \n").split(',')
     first_url = urls_input[0]
 
     if first_url.split('/')[3] == 'channel':
