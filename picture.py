@@ -1,4 +1,5 @@
- # -*- encoding: utf8 -*-
+#!/usr/bin/env python2
+# -*- encoding: utf8 -*-
 try:
     from urllib.request import urlopen
     from urllib.error import HTTPError
@@ -32,7 +33,11 @@ def extract_image(video_id):
     try:
         return urlopen("https://img.youtube.com/vi/%s/maxresdefault.jpg" % video_id).read()
     except HTTPError:
+        pass
+    try:
         return urlopen("https://img.youtube.com/vi/%s/hqdefault.jpg" % video_id).read()
+    except HTTPError:
+        raise SystemExit('Invalid youtube video URL')
 
 def extract_id(yt_url):
     """RegExp covering all youtube video urls
@@ -61,10 +66,14 @@ def fetch_channel_videos(channel_url):
         A list of (str) url
     Example:
         fetch_channel_videos("www.youtube.com/channel/UCPRLhjrtiV8t2GZYmJn79ag")
-        fetch_channel_videos("www.youtube.com/channel/UCPRLhjrtiV8t2GZYmJn79ag/videos")
+        fetch_channel_videos("www.youtube.com/channel/UCPRLhjrtiV8t2GZYmJn79ag/videos") # Not working ATM
     """
-    channel_url = "https://www.youtube.com/channel/%s/videos" % channel_url.split('/')[4]
-    channel_html = urlopen(channel_url).read()
+
+    try:
+        channel_html = urlopen(channel_url).read()
+    except HTTPError:
+        raise SystemExit('Channel name unknown')
+
     soup = BeautifulSoup(channel_html, 'html.parser')
     urls = []
 
@@ -80,15 +89,33 @@ def parse_input():
     Returns:
         A list of (str) video ids
     """
-    urls_input = input("Entrer le lien d'une chaine youtube ou des liens youtube separes par une virgule (,) : \n").split(',')
-    first_url = urls_input[0]
+    msg = "Entrer le nom d'une chaine youtube ou des liens youtube separes par une virgule (,) : \n"
 
-    if first_url.split('/')[3] == 'channel':
-        urls = fetch_channel_videos(first_url)
+    try:
+        urls_input = raw_input(msg)
+    except NameError:
+        urls_input = input(msg)
+
+    if re.match('.*,', urls_input):
+        # is a list of videos
+        urls = urls_input.split(',')
+
+    elif re.match('.*/user/|.*/channel', urls_input):
+        # is a channel url
+        urls = fetch_channel_videos(urls_input)
+
+    elif re.match('^[a-zA-Z0-9_]+$', urls_input):
+        # is a channel name
+        urls = fetch_channel_videos('https://www.youtube.com/user/' + urls_input)
     else:
-        urls = urls_input
+        if extract_id(urls_input):
+            return [extract_id(urls_input)]
+        else:
+            raise SystemExit('Invalid input %s' % urls_input)
+        
     return map(extract_id, urls)
 
+    # m = re.search(r"(?<=.com).*", yt_url)
 
 
 def main():
@@ -101,7 +128,6 @@ def main():
         image = extract_image(video_id)
         create_jpgfile(video_id, image)
         print("%s done" % video_id)
-    input("Fin.")
 
 if __name__ == '__main__':
     main()
